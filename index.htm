@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Brauhof Wien | Das interaktive Krügel</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Satoshi:wght@900&family=Playfair+Display:wght@900&family=Inter:wght@400;700&display=swap');
+
+        :root {
+            --gold: #f4be1d;
+            --foam: #ffffff;
+            --dark: #0c0c0c;
+            --old-gray: #555;
+            --accent-red: #ff4d4d;
+        }
+
+        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--dark); color: white; font-family: 'Inter', sans-serif; height: 600vh; overflow-x: hidden; }
+
+        /* UI ELEMENTS */
+        #mute-btn { position: fixed; top: 20px; right: 20px; z-index: 5000; background: rgba(0,0,0,0.5); border: 1px solid var(--gold); color: var(--gold); border-radius: 50%; width: 45px; height: 45px; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
+
+        /* THE STICKY SVG GLASS */
+        .glass-container {
+            position: fixed; top: 55%; left: 50%; transform: translate(-50%, -50%);
+            width: 240px; height: 400px; z-index: 5; pointer-events: none;
+        }
+
+        .glass-outline {
+            position: absolute; inset: 0;
+            border: 6px solid rgba(255,255,255,0.1); border-top: none;
+            border-radius: 0 0 60px 60px;
+            background: linear-gradient(90deg, rgba(255,255,255,0.05) 0%, transparent 50%, rgba(255,255,255,0.05) 100%);
+        }
+
+        .handle {
+            position: absolute; right: -65px; top: 80px; width: 70px; height: 180px;
+            border: 12px solid rgba(255,255,255,0.1); border-left: none; border-radius: 0 60px 60px 0;
+        }
+
+        .beer-fill {
+            position: absolute; bottom: 0; width: 100%; height: 0%;
+            background: linear-gradient(to top, #d48e00, var(--gold));
+            transition: height 0.1s linear; border-radius: 0 0 50px 50px;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.2);
+        }
+
+        .bubbles {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 100%;
+            background-image: radial-gradient(circle, #fff 1px, transparent 1px);
+            background-size: 25px 25px; animation: bubbleUp 4s linear infinite; opacity: 0.2;
+        }
+
+        @keyframes bubbleUp { from { background-position: 0 0; } to { background-position: 0 -100px; } }
+
+        .foam-head {
+            position: absolute; top: -25px; left: 0; width: 100%; height: 50px;
+            background: var(--foam); border-radius: 50% 50% 0 0;
+            box-shadow: 0 -10px 20px rgba(255,255,255,0.4); display: none;
+        }
+
+        /* SCROLL SECTIONS */
+        .scroll-layer { position: relative; z-index: 10; }
+        section { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+
+        .overpaint-text { font-family: 'Satoshi'; font-size: 2.2rem; color: var(--old-gray); transition: 0.4s; max-width: 90%; }
+        .overpaint-text.active { color: var(--gold); text-shadow: 0 0 20px rgba(244,190,29,0.3); }
+
+        .roast-label { background: var(--accent-red); color: white; padding: 4px 12px; font-size: 0.7rem; font-weight: 900; display: none; margin-bottom: 15px; transform: rotate(-2deg); }
+        .active .roast-label { display: inline-block; }
+
+        .bierdeckel {
+            width: 180px; height: 180px; background: #fff; color: #000; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 900;
+            text-decoration: none; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            margin-top: 30px; border: 5px double #ddd; transition: 0.3s;
+        }
+
+        /* VOUCHER OVERLAY */
+        #voucher-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+            z-index: 10000; align-items: center; justify-content: center; padding: 20px;
+        }
+        .voucher-card {
+            background: #fff; color: #000; padding: 40px; border-radius: 25px;
+            border: 10px double var(--gold); text-align: center; animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+
+        .cta-main { background: var(--gold); border: none; padding: 20px 40px; font-weight: 900; font-size: 1.2rem; border-radius: 50px; cursor: pointer; margin-top: 20px; box-shadow: 0 0 30px var(--gold); display: none; }
+    </style>
+</head>
+<body>
+
+    <button id="mute-btn" onclick="toggleMute()">🔊</button>
+
+    <div class="glass-container">
+        <div class="handle"></div>
+        <div class="glass-outline"></div>
+        <div class="beer-fill" id="beer">
+            <div class="bubbles"></div>
+            <div class="foam-head" id="foam"></div>
+        </div>
+    </div>
+
+    <div class="scroll-layer">
+        <section>
+            <h1 style="font-family:'Satoshi'; font-size: 3.5rem; line-height: 0.8;">BRAUHOF<br><span style="color:var(--gold)">WIEN</span></h1>
+            <p style="margin-top:20px; opacity: 0.5; letter-spacing: 3px;">SCROLL DI DURSTIG</p>
+        </section>
+
+        <section>
+            <div class="overpaint-text" id="t1">
+                <span class="roast-label">ROAST: ZEITREISE NACH 2005</span><br>
+                "Willkommen auf unserer statischen Infoseite..."
+            </div>
+            <a href="#" class="bierdeckel" style="transform:rotate(-5deg)">KOSTN</a>
+        </section>
+
+        <section>
+            <div class="overpaint-text" id="t2">
+                <span class="roast-label">ROAST: TEXTWÜSTE OHNE BIER</span><br>
+                "Wir bieten diverse Getränke und Speisen an..."
+            </div>
+            <a href="#" class="bierdeckel" style="transform:rotate(5deg); background:#f9f9f9;">TRINKN</a>
+        </section>
+
+        <section>
+            <div class="overpaint-text" id="t3">
+                <span class="roast-label">ROAST: ANTI-KOMFORT</span><br>
+                "Buchungsanfragen bitte nur per Fax oder Telefon..."
+            </div>
+            <a href="#" class="bierdeckel">SCHLAFN</a>
+        </section>
+
+        <section>
+            <h1 id="finalText" style="font-family:'Satoshi'; font-size: 3rem;">DURST?</h1>
+            <button class="cta-main" id="cta" onclick="shareAndWin()">🍻 FREIBIER-CODE</button>
+        </section>
+    </div>
+
+    <div id="voucher-overlay">
+        <div class="voucher-card">
+            <p style="text-transform:uppercase; font-size:0.7rem; letter-spacing:2px;">Dein Belohnungs-Seidl</p>
+            <h2 style="font-family:'Playfair Display'; font-size: 2.5rem;">1 FREIBIER</h2>
+            <div style="font-weight:900; font-size:2rem; border:2px dashed #000; margin:20px 0; padding:10px;">PROST-2026</div>
+            <p style="font-size:0.8rem;">Zeig diesen Code an der Schank vor!<br>(Gültig im Brauhof Wien)</p>
+            <button onclick="location.reload()" style="margin-top:20px; background:none; border:none; text-decoration:underline; font-size:0.7rem;">Nochmal zapfen</button>
+        </div>
+    </div>
+
+    <audio id="pourSnd" src="https://assets.mixkit.co/active_storage/sfx/2045/2045-preview.mp3" preload="auto"></audio>
+
+    <script>
+        let muted = false;
+        let played = false;
+        const snd = document.getElementById('pourSnd');
+
+        function toggleMute() {
+            muted = !muted;
+            document.getElementById('mute-btn').innerText = muted ? '🔇' : '🔊';
+        }
+
+        window.onscroll = function() {
+            let h = document.documentElement, 
+                b = document.body,
+                st = 'scrollTop',
+                sh = 'scrollHeight';
+            let percent = (h[st]||b[st]) / ((h[sh]||b[sh]) - h.clientHeight) * 100;
+
+            // Update Beer
+            document.getElementById('beer').style.height = percent + '%';
+            document.getElementById('foam').style.display = percent > 10 ? 'block' : 'none';
+
+            // Overpaint Trigger
+            ['t1','t2','t3'].forEach(id => {
+                let el = document.getElementById(id);
+                let rect = el.getBoundingClientRect();
+                if(rect.top < window.innerHeight/2 && rect.bottom > window.innerHeight/2) {
+                    el.classList.add('active');
+                } else {
+                    el.classList.remove('active');
+                }
+            });
+
+            // Finish Trigger
+            if(percent > 95 && !played) {
+                if(!muted) snd.play();
+                if(navigator.vibrate) navigator.vibrate([100,50,100]);
+                document.getElementById('cta').style.display = 'block';
+                document.getElementById('finalText').innerText = "PROST!";
+                played = true;
+            }
+        };
+
+        async function shareAndWin() {
+            if (navigator.share) {
+                await navigator.share({ title: 'Brauhof Wien', text: 'Zapf dir eins!', url: window.location.href });
+            }
+            document.getElementById('voucher-overlay').style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
